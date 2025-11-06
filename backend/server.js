@@ -75,6 +75,7 @@ mongoose.connect(process.env.MONGODB_URI , {
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users')); // Added for server folder compatibility
 app.use('/api/products', require('./routes/products'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/cart', require('./routes/cart'));

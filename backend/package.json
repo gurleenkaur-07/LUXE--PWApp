@@ -5,8 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "node scripts/devWithSeed.js",
+    "dev:only": "nodemon server.js",
     "seed": "node scripts/seedData.js",
+    "seed:server": "node scripts/seeder.js",
+    "seed:server:destroy": "node scripts/seeder.js -d",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint .",

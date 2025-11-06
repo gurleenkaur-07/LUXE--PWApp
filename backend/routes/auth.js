@@ -18,7 +18,7 @@ router.post('/register',
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { email, password, name } = req.body;
+      const { email, password, name, username } = req.body;
 
       // Check if user already exists
       const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -26,11 +26,20 @@ router.post('/register',
         return res.status(400).json({ message: 'User already exists' });
       }
 
+      // Check if username is provided and already exists
+      if (username) {
+        const existingUsername = await User.findOne({ username });
+        if (existingUsername) {
+          return res.status(400).json({ message: 'Username already exists' });
+        }
+      }
+
       // Create new user (password will be hashed by pre-save hook)
       const newUser = new User({
         email: email.toLowerCase(),
         password,
-        name,
+        name: name || username, // Use name or username as fallback
+        username: username || undefined, // Optional username from server folder
         isAdmin: false,
       });
 
@@ -54,6 +63,7 @@ router.post('/register',
           id: newUser._id.toString(),
           email: newUser.email,
           name: newUser.name,
+          username: newUser.username,
           isAdmin: newUser.isAdmin,
         },
       });
@@ -115,6 +125,7 @@ router.post('/login',
           id: user._id.toString(),
           email: user.email,
           name: user.name,
+          username: user.username,
           isAdmin: user.isAdmin,
         },
       });
@@ -145,14 +156,15 @@ router.get('/me', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({
-      user: {
-        id: user._id.toString(),
-        email: user.email,
-        name: user.name,
-        isAdmin: user.isAdmin,
-      },
-    });
+      res.json({
+        user: {
+          id: user._id.toString(),
+          email: user.email,
+          name: user.name,
+          username: user.username,
+          isAdmin: user.isAdmin,
+        },
+      });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(401).json({ message: 'Invalid token' });
@@ -251,6 +263,7 @@ router.post('/convert-guest',
           id: newUser._id.toString(),
           email: newUser.email,
           name: newUser.name,
+          username: newUser.username,
           isAdmin: newUser.isAdmin,
         },
       });

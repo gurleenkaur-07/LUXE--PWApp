@@ -4,6 +4,7 @@ import Navbar from './Navbar';
 import { useCart } from '../context/CartContext';
 import { useApp } from '../context/AppContext';
 import { enqueueAction } from '../utils/offlineQueue';
+import { idbPut } from '../utils/idb';
 import { Wifi, WifiOff, Loader2 } from 'lucide-react';
 
 const CheckoutPage = () => {
@@ -43,30 +44,133 @@ const CheckoutPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setSyncStatus('syncing');
-    const order = {
-      items: cart.map(({ id, quantity }) => ({ id, quantity })),
-      total: getTotal(),
-      customer: formData,
-      createdAt: Date.now()
-    };
+    
     try {
-      // Try real request first. SW will background-sync if offline and request fails.
-      await fetch('/api/checkout', {
+      const token = localStorage.getItem('token');
+      
+      // Prepare order data for backend API
+      const orderData = {
+        items: cart.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+        })),
+        shippingAddress: {
+          fullName: formData.name,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state || 'N/A',
+          zipCode: formData.zipCode,
+          phone: formData.phone,
+        },
+        paymentMethod: 'cash_on_delivery', // Default payment method
+        discount: getTotalDiscount(),
+      };
+
+      // Create order via API
+      const response = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(order)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify(orderData),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create order');
+      }
+
+      const result = await response.json();
+      const order = result.order;
+
+      // Create bill object
+      const bill = {
+        orderId: order._id || order.id,
+        orderNumber: order.orderNumber,
+        items: order.items || cart.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price - (item.price * (item.discount || 0) / 100),
+          image: item.image,
+        })),
+        shippingAddress: order.shippingAddress || {
+          fullName: formData.name,
+          address: formData.address,
+          city: formData.city,
+          zipCode: formData.zipCode,
+          phone: formData.phone,
+        },
+        customer: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+        },
+        subtotal: order.subtotal || getSubtotal(),
+        tax: order.tax || 0,
+        shippingCost: order.shippingCost || 0,
+        discount: order.discount || getTotalDiscount(),
+        total: order.total || getTotal(),
+        paymentStatus: order.paymentStatus || 'pending',
+        orderStatus: order.orderStatus || 'pending',
+        createdAt: order.createdAt || new Date().toISOString(),
+        expectedDeliveryDate: order.expectedDeliveryDate,
+      };
+
       setSyncStatus('synced');
       clearCart();
-      alert('Order placed successfully!');
-      navigate('/');
-    } catch (_) {
-      // Queue fallback for offline
-      await enqueueAction({ type: 'checkout', payload: order });
+      
+      // Store bill in IndexedDB
+      await idbPut('bills', bill);
+      
+      // Navigate to bill page with bill data
+      navigate('/bill', { state: { bill } });
+    } catch (error) {
+      console.error('Order creation error:', error);
+      
+      // Fallback: Create bill locally for offline mode
+      const offlineBill = {
+        orderId: `offline_${Date.now()}`,
+        orderNumber: `OFF-${Date.now()}`,
+        items: cart.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price - (item.price * (item.discount || 0) / 100),
+          image: item.image,
+        })),
+        shippingAddress: {
+          fullName: formData.name,
+          address: formData.address,
+          city: formData.city,
+          zipCode: formData.zipCode,
+          phone: formData.phone,
+        },
+        customer: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+        },
+        subtotal: getSubtotal(),
+        tax: getSubtotal() * 0.08,
+        shippingCost: getSubtotal() > 50 ? 0 : 9.99,
+        discount: getTotalDiscount(),
+        total: getTotal(),
+        paymentStatus: 'pending',
+        orderStatus: 'pending',
+        createdAt: new Date().toISOString(),
+        expectedDeliveryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      };
+
+      // Store offline order
+      await enqueueAction({ type: 'checkout', payload: offlineBill });
       setSyncStatus('offline');
-      clearCart(); // optimistic UI
-      alert('You are offline. Order queued and will sync automatically.');
-      navigate('/');
+      clearCart();
+      
+      // Store offline bill in IndexedDB
+      await idbPut('bills', offlineBill);
+      
+      // Navigate to bill page
+      navigate('/bill', { state: { bill: offlineBill } });
     } finally {
       setIsSubmitting(false);
     }

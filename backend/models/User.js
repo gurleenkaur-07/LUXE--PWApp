@@ -1,7 +1,28 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const cartItemSchema = new mongoose.Schema({
+  product: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: true,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+    default: 1,
+  },
+});
+
 const userSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: false,
+    trim: true,
+    unique: true,
+    sparse: true, // Allow null/undefined values
+  },
   email: {
     type: String,
     required: [true, 'Email is required'],
@@ -19,10 +40,11 @@ const userSchema = new mongoose.Schema({
   },
   name: {
     type: String,
-    required: [true, 'Name is required'],
+    required: false,
     trim: true,
     maxlength: [100, 'Name cannot exceed 100 characters'],
   },
+  cart: [cartItemSchema], // Added cart support from server folder
   isAdmin: {
     type: Boolean,
     default: false,
