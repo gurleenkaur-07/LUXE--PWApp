@@ -65,9 +65,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI , {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+mongoose.connect(process.env.MONGODB_URI, {
   dbName: process.env.MONGODB_DB || 'pwa-storefront',
 })
 .then(() => console.log('MongoDB connected successfully'))

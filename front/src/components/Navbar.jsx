@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ShoppingCart, Home, Package, Menu, X, Wifi, WifiOff, LogIn, LogOut, User } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import InstallPrompt from './InstallPrompt';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -60,8 +59,6 @@ const Navbar = () => {
                 {isOnline ? 'Connected' : 'Offline'}
               </span>
             </div>
-            
-            <InstallPrompt />
 
             {isAuthenticated ? (
               <div className="hidden md:flex items-center space-x-3">

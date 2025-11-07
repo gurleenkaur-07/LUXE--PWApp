@@ -10,6 +10,7 @@ import CheckoutPage from './components/CheckoutPage';
 import BillPage from './components/BillPage';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
+import InstallPrompt from './components/InstallPrompt';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
             </Routes>
+            <InstallPrompt />
           </Router>
         </CartProvider>
       </AuthProvider>
